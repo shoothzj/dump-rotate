@@ -9,18 +9,17 @@ import (
 	"github.com/google/gopacket/pcapgo"
 	"io/ioutil"
 	"os"
-	"reflect"
 	"strconv"
 	"strings"
 )
 
 var (
 	singleFileSizeMax int64
-	totalFiles int
-	bpfFilter string
-	name string
-	ni string
-	nn string
+	totalFiles        int
+	bpfFilter         string
+	name              string
+	ni                string
+	nn                string
 )
 
 func main() {
@@ -30,8 +29,8 @@ func main() {
 		return
 	}
 
-	flag.Int64Var(&singleFileSizeMax,"Z", 50, "use to specify single File size Max MB")
-	flag.IntVar(&totalFiles,"J", 5, "use to specify total files")
+	flag.Int64Var(&singleFileSizeMax, "Z", 50, "use to specify single File size Max MB")
+	flag.IntVar(&totalFiles, "J", 5, "use to specify total files")
 	flag.StringVar(&bpfFilter, "BPF", "", "port list")
 	flag.StringVar(&name, "Name", "Test", "port list")
 	flag.StringVar(&ni, "NI", "", "network card ip")
@@ -43,11 +42,11 @@ func main() {
 	finalChannel := make(chan gopacket.Packet, 5000)
 	go trueWrite(finalChannel)
 
-	if (ni != "") {
+	if ni != "" {
 		//this is ip mode
 		networkInterfaceViaIp := findNetworkInterfaceViaIp(ni, devices)
 		go goCaptureDevice(networkInterfaceViaIp, finalChannel)
-	} else if (nn != "any") {
+	} else if nn != "any" {
 		go goCaptureDevice(nn, finalChannel)
 	} else {
 		for _, device := range devices {
@@ -55,27 +54,13 @@ func main() {
 		}
 	}
 
-
-	var device_eth0 pcap.Interface
-	fmt.Println("Devices found:")
-	for _, device := range devices {
-		for _,address := range device.Addresses {
-			fmt.Println("- IP address: ", address.IP)
-			if (address.IP.String() == "172.20.10.12") {
-				device_eth0 = device;
-				fmt.Println(reflect.TypeOf(device))
-			}
-		}
-	}
-	fmt.Println("begin to %s", device_eth0.Name)
-
 	ch := make(chan int)
 	_ = <-ch
 	os.Exit(0)
 }
 
 func goCaptureDevice(deviceName string, finalChannel chan gopacket.Packet) {
-	handle, err := pcap.OpenLive(deviceName, 2147483647, false, 0)
+	handle, err := pcap.OpenLive(deviceName, 0, false, 0)
 	if bpfFilter != "" {
 		handle.SetBPFFilter(bpfFilter)
 	}
@@ -96,7 +81,7 @@ func trueWrite(packets chan gopacket.Packet) {
 	var currentFile *os.File
 	var currentWriter *pcapgo.Writer
 	for packet := range packets {
-		if (isStart) {
+		if isStart {
 			currentFile, currentWriter = getFileWriter(getPcapWriteName(nowFileIndex))
 			currentWriter.WritePacket(packet.Metadata().CaptureInfo, packet.Data())
 			isStart = false
@@ -105,7 +90,7 @@ func trueWrite(packets chan gopacket.Packet) {
 		//fmt.Println(packet)
 		currentWriter.WritePacket(packet.Metadata().CaptureInfo, packet.Data())
 		size := getCurrentFileSize(nowFileIndex)
-		if (size > singleFileSizeMax * 1000 * 1000) {
+		if size > singleFileSizeMax*1000*1000 {
 			closeWriter(currentFile, currentWriter)
 			judgeAndRemovePcap()
 			nowFileIndex++
@@ -121,30 +106,28 @@ func closeWriter(file *os.File, writer *pcapgo.Writer) {
 }
 
 func zipFile(fileName string) {
-	ZipFiles(fileName + ".zip", fileName)
+	ZipFiles(fileName+".zip", fileName)
 	os.Remove(fileName)
 }
 
-
-
-func getCurrentFileSize(index int) int64{
+func getCurrentFileSize(index int) int64 {
 	var aux_value = getPcapWriteName(index)
 	info, _ := os.Stat(aux_value)
 	return info.Size()
 }
 
-func getPcapWriteName(index int)(string) {
+func getPcapWriteName(index int) string {
 	itoa := strconv.Itoa(index)
 	var midZero = ""
-	for  i := 0; i < 4 -len(itoa); i++  {
+	for i := 0; i < 4-len(itoa); i++ {
 		midZero += "0"
 	}
-	return name + midZero + itoa + ".pcap";
+	return name + midZero + itoa + ".pcap"
 }
 
 func judgeAndRemovePcap() {
 	var currentPcapNum = getPcapCountCurrentDir()
-	if (currentPcapNum >= totalFiles) {
+	if currentPcapNum >= totalFiles {
 		deleteOldestPcap()
 	}
 }
@@ -170,7 +153,7 @@ func deleteOldestPcap() {
 	}
 }
 
-func getPcapCountCurrentDir()(int) {
+func getPcapCountCurrentDir() int {
 	var count = 0
 	files, _ := ioutil.ReadDir("./")
 	for _, file := range files {
@@ -181,7 +164,7 @@ func getPcapCountCurrentDir()(int) {
 	return count
 }
 
-func getFileWriter(name string)(*os.File, *pcapgo.Writer) {
+func getFileWriter(name string) (*os.File, *pcapgo.Writer) {
 	f, _ := os.Create(name)
 	w := pcapgo.NewWriter(f)
 
@@ -190,11 +173,11 @@ func getFileWriter(name string)(*os.File, *pcapgo.Writer) {
 }
 
 func findNetworkInterfaceViaIp(ip string, devices []pcap.Interface) string {
-	fmt.Println("Devices found:")
+	fmt.Println("begin to traversing Devices found:")
 	for _, device := range devices {
-		for _,address := range device.Addresses {
+		for _, address := range device.Addresses {
 			fmt.Println("- IP address: ", address.IP)
-			if (address.IP.String() == "172.20.10.12") {
+			if address.IP.String() == ip {
 				return device.Name
 			}
 		}
