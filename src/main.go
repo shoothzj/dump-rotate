@@ -62,6 +62,10 @@ func main() {
 }
 
 func goCaptureDevice(deviceName string, finalChannel chan gopacket.Packet) {
+	// if you set packetSize to zero, then we set int32 max
+	if packetSize == 0 {
+		packetSize = 2147483647
+	}
 	handle, err := pcap.OpenLive(deviceName, int32(packetSize), false, 0)
 	if bpfFilter != "" {
 		handle.SetBPFFilter(bpfFilter)
