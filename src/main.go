@@ -21,6 +21,7 @@ var (
 	ni                string
 	nn                string
 	packetSize        int
+	promisc           bool
 )
 
 func main() {
@@ -37,6 +38,7 @@ func main() {
 	flag.StringVar(&ni, "NI", "", "network card ip")
 	flag.StringVar(&nn, "NN", "", "network card name")
 	flag.IntVar(&packetSize, "ps", 1024, "packet size unit is byte")
+	flag.BoolVar(&promisc, "prom", false, "if it's promisc")
 	flag.Parse()
 
 	fmt.Println("flag parse finished.")
@@ -66,7 +68,7 @@ func goCaptureDevice(deviceName string, finalChannel chan gopacket.Packet) {
 	if packetSize == 0 {
 		packetSize = 2147483647
 	}
-	handle, err := pcap.OpenLive(deviceName, int32(packetSize), false, 0)
+	handle, err := pcap.OpenLive(deviceName, int32(packetSize), promisc, 0)
 	if bpfFilter != "" {
 		handle.SetBPFFilter(bpfFilter)
 	}
